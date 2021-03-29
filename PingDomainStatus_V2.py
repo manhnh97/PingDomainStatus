@@ -1,21 +1,65 @@
 import requests
 import csv
-import re
+from datetime import datetime
 
-DomainFile = "DomainRikkei/rikkei.org.txt"
+# ==> Enter File Domain <==
+DomainFile = "DomainTest.txt"
+chunkSize = 3
 
-def main(DomainFile):
-    with open(DomainFile) as file:
-        for domain in file:
-            lines = file.readline()
-        # isDomain = re.compile(r"^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$")
-    # isDomain = re.compile(r"^([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5})")
-            CheckDomain = re.findall(r"^([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5})", lines)
+def DomainStatusCheck(DomainFile):
+    data = []
+    with open(DomainFile) as infile:
+        for domain in infile:
+            domain = domain.strip('\n')
+            nowDateTime = datetime.now().strftime("%D %H:%M:%S")
+            if 'http' not in domain:
+                prefixDomain = 'http://'
+                domainCheck = prefixDomain+domain
+                DomainStatus = Domain_StatusCode(domainCheck)
+                if DomainStatus == 200:
+                    data.append([nowDateTime, domainCheck, DomainStatus])
+                    continue
+                else:
+                    prefixDomain = 'https://'
+                    domainCheck = prefixDomain+domain
+                    DomainStatus = Domain_StatusCode(domainCheck)
+                    if DomainStatus == 200:
+                        data.append([nowDateTime, domainCheck, DomainStatus])
+                    else:
+                        prefixDomain = 'http://www.'
+                        domainCheck = prefixDomain+domain
+                        DomainStatus = Domain_StatusCode(domainCheck)
+                        if DomainStatus == 200:
+                            data.append([nowDateTime, domainCheck, DomainStatus])
+                        else:
+                            prefixDomain = 'https://www.'
+                            domainCheck = prefixDomain+domain
+                            DomainStatus = Domain_StatusCode(domainCheck)
+                            if DomainStatus == 200:
+                                data.append([nowDateTime, domainCheck, DomainStatus])
+                            else:
+                                data.append([nowDateTime, domainCheck, DomainStatus])
 
-            print(CheckDomain)
+    return data
 
+def Domain_StatusCode(domainCheck):
+    r = requests.get(domainCheck)
+    DomainStatus = r.status_code
+    return DomainStatus
 
+def main(DomainFile, chunkSize):
+    # open results file and write header
+    try:
+        rfile = open('results.csv', 'w+', newline='')
+        dataWriter = csv.writer(rfile, delimiter = ',')
+        header = ['Scan Date', 'Domain', 'Status']
+        dataWriter.writerow(header)
 
+    except IOError as ioerr:
+        print('Please ensure the file is closed.')
+        print(ioerr)
 
-
-main(DomainFile)
+    ResultDataDomain = DomainStatusCheck(DomainFile)
+    for data in ResultDataDomain:
+        dataWriter.writerow(data)
+main(DomainFile, chunkSize)
