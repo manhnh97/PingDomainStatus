@@ -1,16 +1,20 @@
 import requests
 import csv
 from datetime import datetime
+import re
+import urllib3
 
 # ==> Enter File Domain <==
-DomainFile = "DomainTest.txt"
+DomainFile = "DomainRikkei/DomainAllinOne.txt"
 chunkSize = 3
 
 def DomainStatusCheck(DomainFile):
     data = []
-    with open(DomainFile) as infile:
-        for domain in infile:
+    for domain in FilterDomain(DomainFile):
+        try:
             domain = domain.strip('\n')
+            print(domain)
+            # """
             nowDateTime = datetime.now().strftime("%D %H:%M:%S")
             if 'http' not in domain:
                 prefixDomain = 'http://'
@@ -18,7 +22,6 @@ def DomainStatusCheck(DomainFile):
                 DomainStatus = Domain_StatusCode(domainCheck)
                 if DomainStatus == 200:
                     data.append([nowDateTime, domainCheck, DomainStatus])
-                    continue
                 else:
                     prefixDomain = 'https://'
                     domainCheck = prefixDomain+domain
@@ -39,13 +42,29 @@ def DomainStatusCheck(DomainFile):
                                 data.append([nowDateTime, domainCheck, DomainStatus])
                             else:
                                 data.append([nowDateTime, domainCheck, DomainStatus])
+            # """
+        except ConnectionError:
+            print(ConnectionError)
 
     return data
 
 def Domain_StatusCode(domainCheck):
-    r = requests.get(domainCheck)
-    DomainStatus = r.status_code
+    http = urllib3.PoolManager()
+    r = http.request('GET', domainCheck)
+    DomainStatus = r.status
+    print(DomainStatus)
     return DomainStatus
+
+def FilterDomain(DomainFile):
+    regex = re.compile(r"(^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?)$|([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5})")
+    with open(DomainFile, 'r') as infile:
+        for domain in infile:
+            domain = domain.strip('\n')
+            result = regex.match(domain)
+            if result != None:
+                dataDomain = result.group()
+                # dataDomain = set(result.group())
+                yield dataDomain
 
 def main(DomainFile, chunkSize):
     # open results file and write header
@@ -62,4 +81,5 @@ def main(DomainFile, chunkSize):
     ResultDataDomain = DomainStatusCheck(DomainFile)
     for data in ResultDataDomain:
         dataWriter.writerow(data)
+
 main(DomainFile, chunkSize)
